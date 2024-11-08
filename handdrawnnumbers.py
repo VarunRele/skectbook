@@ -1,8 +1,9 @@
 import pygame
 import numpy as np
+from tinyvgg import *
 
-WIDHT, HEIGHT = 800, 800
-ROW, COLS = 40, 40
+WIDHT, HEIGHT = 280 * 3, 280 * 3
+ROW, COLS = 28, 28
 
 class Pixel(pygame.sprite.Sprite):
     def __init__(self, groups, size, pos):
@@ -31,10 +32,11 @@ class Pixel(pygame.sprite.Sprite):
 class Game:
     def __init__(self):
         pygame.init()
-        self.screen = pygame.display.set_mode((800, 800))
+        self.screen = pygame.display.set_mode((WIDHT, HEIGHT))
         pygame.display.set_caption('Draw Number')
         self.clock = pygame.time.Clock()
         self.running = True
+        self.model = torch.load('cnn_model.pt', weights_only=False)
 
         self.all_sprites = pygame.sprite.Group()
         self.matrix: list[list[Pixel]] = []
@@ -98,6 +100,14 @@ class Game:
             print(value)
         if keys[pygame.K_b]:
             self.clear_canvas()
+        if keys[pygame.K_c]:
+            self.predict_value()
+
+    def predict_value(self):
+        values = self.calculate_matrix()
+        canvas = torch.tensor(values, dtype=torch.float).unsqueeze(dim=0)
+        preds = self.model.predict(canvas, probs=True)[0]
+        print(preds)
 
     def run(self):
         while self.running:

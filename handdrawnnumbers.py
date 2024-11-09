@@ -32,11 +32,15 @@ class Pixel(pygame.sprite.Sprite):
 class Game:
     def __init__(self):
         pygame.init()
-        self.screen = pygame.display.set_mode((WIDHT, HEIGHT))
+        self.screen = pygame.display.set_mode((WIDHT * 1.5, HEIGHT))
         pygame.display.set_caption('Draw Number')
         self.clock = pygame.time.Clock()
         self.running = True
         self.model = torch.load('cnn_model.pt', weights_only=False)
+        self.prev_time = pygame.time.get_ticks()
+        self.font = pygame.font.Font(None, 64)
+        self.prediction_delay = 1000
+        self.preds_sorted = []
 
         self.all_sprites = pygame.sprite.Group()
         self.matrix: list[list[Pixel]] = []
@@ -67,11 +71,11 @@ class Game:
                                 continue
                             pixel = self.matrix[x][y]
                             if (dir[0] == 1 or dir[0] == -1) and (dir[1] == 1 or dir[1] == -1):
-                                pixel.value += 0.05
+                                pixel.value += 0.08
                             elif dir[0] == 0 and dir[1] == 0:
-                                pixel.value += 0.07
+                                pixel.value += 0.1
                             else:
-                                pixel.value += 0.06
+                                pixel.value += 0.09
                             if pixel.value >= 1.0:
                                 pixel.value = 1.0
                             color_multiplier = int(255 * pixel.value)
@@ -95,19 +99,27 @@ class Game:
 
     def user_input(self):
         keys = pygame.key.get_just_pressed()
-        if keys[pygame.K_a]:
-            value = self.calculate_matrix()
-            print(value)
         if keys[pygame.K_b]:
             self.clear_canvas()
-        if keys[pygame.K_c]:
-            self.predict_value()
 
     def predict_value(self):
         values = self.calculate_matrix()
         canvas = torch.tensor(values, dtype=torch.float).unsqueeze(dim=0)
         preds = self.model.predict(canvas, probs=True)[0]
-        print(preds)
+        return preds
+
+    def display_prediction(self):
+        current_time = pygame.time.get_ticks()
+        if current_time - self.prev_time >= self.prediction_delay:
+            preds = self.predict_value()
+            preds_dict = {i: pred for i, pred in enumerate(preds)}
+            self.preds_sorted = sorted(preds_dict.items(), key=lambda item: -item[1])
+            self.prev_time = pygame.time.get_ticks()
+        for idx, (value, prob) in enumerate(self.preds_sorted):
+            text = self.font.render(f'{value}: {prob:.5%}', True, 'black')
+            y = ((HEIGHT // len(self.preds_sorted)) * idx) + 50
+            text_rect = text.get_frect(center=(self.screen.width - 200, y))
+            self.screen.blit(text, text_rect)
 
     def run(self):
         while self.running:
@@ -118,7 +130,8 @@ class Game:
             self.all_sprites.update()
             self.user_input()
             self.draw_canvas()
-            self.screen.fill('black')
+            self.screen.fill('grey')
+            self.display_prediction()
             self.all_sprites.draw(self.screen)
             pygame.display.update()
         pygame.quit()

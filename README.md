@@ -1,5 +1,9 @@
 ## Canvas to draw Number and to predict its value
 
-Requires pygame to run.
+Requires pygame-ce to run.
 
-Press 'C' to get probability distribution. (Distribution on the side of the canvas is in progress)
+Draw a number in the black screen. On the side it will show confident the model to a given number.
+
+Note: Model takes input of 28 * 28 tensor. 
+
+Current model is not great. Need to improve further by providing much variation in trianing samples.
